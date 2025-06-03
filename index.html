@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecurePass Password Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom styles for password strength indicator */
+        .security-warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0.375rem;
+        }
+        .password-strength-bar {
+            height: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        /* Custom animation for the lock icon */
+        @keyframes lockShake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            50% { transform: rotate(10deg); }
+            75% { transform: rotate(-10deg); }
+        }
+        
+        .shake {
+            animation: lockShake 0.5s ease-in-out;
+        }
+        
+        /* Chrome, Safari, Edge, Opera */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        /* Firefox */
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-blue-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <!-- App Header -->
+        <header class="text-center mb-10">
+            <div class="inline-block bg-white p-4 rounded-xl shadow-lg mb-4">
+                <i class="fas fa-lock text-4xl text-indigo-600 shake"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">SecurePass</h1>
+            <p class="text-gray-600">Your personal password vault</p>
+        </header>
+        
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column - User Accounts -->
+            <div class="lg:col-span-1 bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-user-circle mr-2 text-indigo-500"></i> User Accounts
+                </h2>
+                
+                <!-- Add New Account Form -->
+                <div class="mb-6 p-4 bg-indigo-50 rounded-lg">
+                    <h3 class="text-md font-medium text-gray-700 mb-3">Add New Account</h3>
+                    <form id="accountForm" class="space-y-3">
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="email" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <div class="relative">
+                                <input type="password" id="password" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <button type="button" id="togglePassword" class="absolute right-3 top-2 text-gray-500">
+                                    <i class="far fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="mt-1 flex space-x-1">
+                                <div id="strengthBar1" class="password-strength-bar flex-1 bg-gray-200 rounded"></div>
+                                <div id="strengthBar2" class="password-strength-bar flex-1 bg-gray-200 rounded"></div>
+                                <div id="strengthBar3" class="password-strength-bar flex-1 bg-gray-200 rounded"></div>
+                                <div id="strengthBar4" class="password-strength-bar flex-1 bg-gray-200 rounded"></div>
+                            </div>
+                            <p id="passwordStrengthText" class="text-xs mt-1 text-gray-500"></p>
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-200">
+                            <i class="fas fa-save mr-2"></i> Save Account
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Accounts List -->
+                <div>
+                    <h3 class="text-md font-medium text-gray-700 mb-3">Saved Accounts</h3>
+                    <div id="accountsList" class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                        <!-- Accounts will be added here dynamically -->
+                        <p id="noAccountsMessage" class="text-gray-500 text-sm text-center py-4">No accounts saved yet</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column - Password Entries -->
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-key mr-2 text-indigo-500"></i> Saved Passwords
+                    </h2>
+                    <span id="selectedAccount" class="text-sm text-indigo-600 font-medium"></span>
+                </div>
+                
+                <!-- Add New Password Form (hidden by default) -->
+                <div id="addPasswordSection" class="mb-6 hidden p-4 bg-indigo-50 rounded-lg">
+                    <h3 class="text-md font-medium text-gray-700 mb-3">Add New Password</h3>
+                    <form id="passwordForm" class="space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label for="siteName" class="block text-sm font-medium text-gray-700 mb-1">Site Name</label>
+                                <input type="text" id="siteName" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label for="siteUrl" class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                                <input type="url" id="siteUrl" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="sitePassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <div class="relative">
+                                <input type="password" id="sitePassword" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <button type="button" id="toggleSitePassword" class="absolute right-3 top-2 text-gray-500">
+                                    <i class="far fa-eye"></i>
+                                </button>
+                                <button type="button" id="generatePassword" class="absolute right-10 top-2 text-gray-500 text-sm" title="Generate Password">
+                                    <i class="fas fa-random"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button type="submit" class="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-200">
+                                <i class="fas fa-plus mr-2"></i> Add Password
+                            </button>
+                            <button type="button" id="cancelAddPassword" class="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition duration-200">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Password Entries List -->
+                <div id="passwordsList" class="space-y-3">
+                    <!-- Password entries will be added here dynamically -->
+                    <div id="noPasswordsMessage" class="text-center py-8">
+                        <div class="inline-block p-4 bg-gray-100 rounded-full mb-3">
+                            <i class="fas fa-key text-gray-400 text-2xl"></i>
+                        </div>
+                        <p class="text-gray-500">No password entries yet</p>
+                        <p class="text-sm text-gray-400 mt-1">Select an account from the left panel to view or add passwords</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Password Generator Modal -->
+        <div id="passwordGeneratorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Password Generator</h3>
+                    <button id="closeGeneratorModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label for="passwordLength" class="text-sm font-medium text-gray-700">Length: <span id="lengthValue">12</span></label>
+                        <input type="range" id="passwordLength" min="8" max="32" value="12" class="w-32">
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="uppercase" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="uppercase" class="ml-2 block text-sm text-gray-700">Uppercase Letters (A-Z)</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="lowercase" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="lowercase" class="ml-2 block text-sm text-gray-700">Lowercase Letters (a-z)</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="numbers" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="numbers" class="ml-2 block text-sm text-gray-700">Numbers (0-9)</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="symbols" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="symbols" class="ml-2 block text-sm text-gray-700">Symbols (!@#$%)</label>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="generatedPassword" readonly class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                        <button id="copyGeneratedPassword" class="absolute right-3 top-2 text-gray-500 hover:text-indigo-600">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div class="flex space-x-2 pt-2">
+                        <button id="generatePasswordBtn" class="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-200">
+                            Generate
+                        </button>
+                        <button id="useGeneratedPassword" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-200">
+                            Use Password
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const accountForm = document.getElementById('accountForm');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const togglePassword = document.getElementById('togglePassword');
+            const accountsList = document.getElementById('accountsList');
+            const noAccountsMessage = document.getElementById('noAccountsMessage');
+            const passwordsList = document.getElementById('passwordsList');
+            const noPasswordsMessage = document.getElementById('noPasswordsMessage');
+            const selectedAccount = document.getElementById('selectedAccount');
+            const addPasswordSection = document.getElementById('addPasswordSection');
+            const passwordForm = document.getElementById('passwordForm');
+            const siteNameInput = document.getElementById('siteName');
+            const siteUrlInput = document.getElementById('siteUrl');
+            const sitePasswordInput = document.getElementById('sitePassword');
+            const toggleSitePassword = document.getElementById('toggleSitePassword');
+            const cancelAddPassword = document.getElementById('cancelAddPassword');
+            const generatePassword = document.getElementById('generatePassword');
+            const passwordGeneratorModal = document.getElementById('passwordGeneratorModal');
+            const closeGeneratorModal = document.getElementById('closeGeneratorModal');
+            const passwordLength = document.getElementById('passwordLength');
+            const lengthValue = document.getElementById('lengthValue');
+            const uppercase = document.getElementById('uppercase');
+            const lowercase = document.getElementById('lowercase');
+            const numbers = document.getElementById('numbers');
+            const symbols = document.getElementById('symbols');
+            const generatedPassword = document.getElementById('generatedPassword');
+            const copyGeneratedPassword = document.getElementById('copyGeneratedPassword');
+            const generatePasswordBtn = document.getElementById('generatePasswordBtn');
+            const useGeneratedPassword = document.getElementById('useGeneratedPassword');
+            
+            // Security Configuration
+            const SECURITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+            let masterPasswordEnabled = false;
+            let masterPasswordHash = null;
+            let lastActivityTime = Date.now();
+
+            // State
+            let accounts = JSON.parse(localStorage.getItem('securePassAccounts')) || [];
+            let passwords = JSON.parse(localStorage.getItem('securePassPasswords')) || {};
+            let currentAccountId = null;
+
+            // Check for inactivity periodically
+            setInterval(checkInactivity, 60000); // Check every minute
+
+            // Password Strength Bars
+            const strengthBars = [
+                document.getElementById('strengthBar1'),
+                document.getElementById('strengthBar2'),
+                document.getElementById('strengthBar3'),
+                document.getElementById('strengthBar4')
+            ];
+            const passwordStrengthText = document.getElementById('passwordStrengthText');
+
+            // Initialize
+            renderAccounts();
+            updatePasswordStrength(passwordInput.value);
+            
+            // Event Listeners
+            accountForm.addEventListener('submit', handleAccountSubmit);
+            passwordInput.addEventListener('input', function() {
+                updatePasswordStrength(this.value);
+            });
+            togglePassword.addEventListener('click', function() {
+                togglePasswordVisibility(passwordInput, togglePassword);
+            });
+            toggleSitePassword.addEventListener('click', function() {
+                togglePasswordVisibility(sitePasswordInput, toggleSitePassword);
+            });
+            cancelAddPassword.addEventListener('click', function() {
+                addPasswordSection.classList.add('hidden');
+                passwordForm.reset();
+            });
+            passwordForm.addEventListener('submit', handlePasswordSubmit);
+            generatePassword.addEventListener('click', function() {
+                passwordGeneratorModal.classList.remove('hidden');
+                generateRandomPassword();
+            });
+            closeGeneratorModal.addEventListener('click', function() {
+                passwordGeneratorModal.classList.add('hidden');
+            });
+            passwordLength.addEventListener('input', function() {
+                lengthValue.textContent = this.value;
+            });
+            copyGeneratedPassword.addEventListener('click', function() {
+                navigator.clipboard.writeText(generatedPassword.value).then(function() {
+                    const originalIcon = copyGeneratedPassword.innerHTML;
+                    copyGeneratedPassword.innerHTML = '<i class="fas fa-check text-green-500"></i>';
+                    setTimeout(function() {
+                        copyGeneratedPassword.innerHTML = originalIcon;
+                    }, 2000);
+                });
+            });
+            generatePasswordBtn.addEventListener('click', generateRandomPassword);
+            useGeneratedPassword.addEventListener('click', function() {
+                sitePasswordInput.value = generatedPassword.value;
+                passwordGeneratorModal.classList.add('hidden');
+                sitePasswordInput.focus();
+            });
+            
+            // Functions
+            function togglePasswordVisibility(inputElement, buttonElement) {
+                const type = inputElement.getAttribute('type') === 'password' ? 'text' : 'password';
+                inputElement.setAttribute('type', type);
+                const icon = inputElement.getAttribute('type') === 'password' ? '<i class="far fa-eye"></i>' : '<i class="far fa-eye-slash"></i>';
+                buttonElement.innerHTML = icon;
+            }
+            
+            function updatePasswordStrength(password) {
+                let strength = 0;
+                let messages = [];
+                
+                // Check password length
+                if (password.length >= 8) strength++;
+                if (password.length >= 12) strength++;
+                
+                // Check for uppercase letters
+                if (password.match(/[A-Z]/)) strength++;
+                
+                // Check for lowercase letters
+                if (password.match(/[a-z]/)) strength++;
+                
+                // Check for numbers
+                if (password.match(/[0-9]/)) strength++;
+                
+                // Check for special characters
+                if (password.match(/[^A-Za-z0-9]/)) strength++;
+                
+                // Prevent strength from exceeding maximum
+                strength = Math.min(strength, 4);
+                
+                // Update strength bars and text
+                for (let i = 0; i < strengthBars.length; i++) {
+                    if (i < strength) {
+                        strengthBars[i].style.backgroundColor = getStrengthColor(strength);
+                    } else {
+                        strengthBars[i].style.backgroundColor = '#e5e7eb'; // gray-200
+                    }
+                }
+                
+                // Update strength text
+                const strengthLabels = ['Very Weak', 'Weak', 'Medium', 'Strong', 'Very Strong'];
+                const strengthColors = ['text-red-500', 'text-orange-500', 'text-yellow-500', 'text-green-500', 'text-green-600'];
+                passwordStrengthText.textContent = strengthLabels[strength];
+                passwordStrengthText.className = `text-xs mt-1 ${strengthColors[strength]}`;
+            }
+            
+            function getStrengthColor(strength) {
+                const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#16a34a'];
+                return colors[strength];
+            }
+            
+            function handleAccountSubmit(e) {
+                e.preventDefault();
+                
+                const email = emailInput.value.trim();
+                const password = passwordInput.value;
+                
+                // Validate email
+                if (!validateEmail(email)) {
+                    showToast('Please enter a valid email address', 'error');
+                    return;
+                }
+                
+                // Check if account already exists
+                const accountExists = accounts.some(account => account.email === email);
+                if (accountExists) {
+                    showToast('An account with this email already exists', 'error');
+                    return;
+                }
+                
+                // Create new account
+                const newAccount = {
+                    id: Date.now().toString(),
+                    email: email,
+                    password: password,
+                    createdAt: new Date().toISOString()
+                };
+                
+                accounts.push(newAccount);
+                saveAccounts();
+                
+                // Reset form
+                accountForm.reset();
+                updatePasswordStrength('');
+                
+                // Show success message
+                showToast('Account saved successfully', 'success');
+                
+                // Render accounts
+                renderAccounts();
+            }
+            
+            function validateEmail(email) {
+                const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return re.test(email);
+            }
+            
+            // Basic encryption function (for demonstration)
+            function simpleEncrypt(text) {
+                if (!text) return text;
+                return btoa(text.split('').reverse().join('') + '_enc');
+            }
+
+            function simpleDecrypt(text) {
+                if (!text) return text;
+                try {
+                    const decoded = atob(text);
+                    return decoded.replace('_enc', '').split('').reverse().join('');
+                } catch {
+                    return text;
+                }
+            }
+
+            function saveAccounts() {
+                const toSave = [...accounts];
+                if (masterPasswordEnabled) {
+                    toSave.forEach(account => {
+                        account.password = simpleEncrypt(account.password);
+                    });
+                }
+                localStorage.setItem('securePassAccounts', JSON.stringify(toSave));
+            }
+            
+            function savePasswords() {
+                const toSave = {...passwords};
+                if (masterPasswordEnabled) {
+                    Object.keys(toSave).forEach(accountId => {
+                        toSave[accountId].forEach(password => {
+                            password.password = simpleEncrypt(password.password);
+                        });
+                    });
+                }
+                localStorage.setItem('securePassPasswords', JSON.stringify(toSave));
+            }
+
+            function checkInactivity() {
+                if (Date.now() - lastActivityTime > SECURITY_TIMEOUT) {
+                    lockApplication();
+                }
+            }
+
+            function updateActivityTime() {
+                lastActivityTime = Date.now();
+            }
+
+            function lockApplication() {
+                currentAccountId = null;
+                renderAccounts();
+                renderPasswords();
+                addPasswordSection.classList.add('hidden');
+                selectedAccount.textContent = '';
+                showToast('Application locked due to inactivity', 'info');
+            }
+
+            // Track user activity
+            document.addEventListener('mousemove', updateActivityTime);
+            document.addEventListener('keydown', updateActivityTime);
+            
+            function renderAccounts() {
+                if (accounts.length === 0) {
+                    noAccountsMessage.classList.remove('hidden');
+                    accountsList.innerHTML = '';
+                    accountsList.appendChild(noAccountsMessage);
+                    selectedAccount.textContent = '';
+                    return;
+                }
+                
+                noAccountsMessage.classList.add('hidden');
+                accountsList.innerHTML = '';
+                
+                accounts.forEach(account => {
+                    const accountElement = document.createElement('div');
+                    accountElement.className = `flex items-center justify-between p-3 rounded-lg cursor-pointer transition duration-200 ${currentAccountId === account.id ? 'bg-indigo-100 border border-indigo-200' : 'bg-gray-50 hover:bg-gray-100'}`;
+                    accountElement.innerHTML = `
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-full mr-3">
+                                ${account.email.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-800">${account.email}</h4>
+                                <p class="text-xs text-gray-500">${new Date(account.createdAt).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                        <button class="text-gray-400 hover:text-gray-600 p-1" data-id="${account.id}" data-action="delete">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                    
+                    // Add click event
+                    accountElement.addEventListener('click', function(e) {
+                        if (e.target.closest('[data-action="delete"]')) {
+                            e.stopPropagation();
+                            const id = e.target.closest('[data-action="delete"]').getAttribute('data-id');
+                            deleteAccount(id);
+                            return;
+                        }
+                        
+                        currentAccountId = account.id;
+                        renderAccounts(); // Re-render to update active state
+                        selectedAccount.textContent = account.email;
+                        addPasswordSection.classList.remove('hidden');
+                        renderPasswords();
+                    });
+                    
+                    accountsList.appendChild(accountElement);
+                });
+                
+                // If no account is selected, show the no passwords message
+                if (!currentAccountId) {
+                    noPasswordsMessage.classList.remove('hidden');
+                    passwordsList.innerHTML = '';
+                    passwordsList.appendChild(noPasswordsMessage);
+                    addPasswordSection.classList.add('hidden');
+                }
+            }
+            
+            function deleteAccount(id) {
+                if (confirm('Are you sure you want to delete this account and all its saved passwords?')) {
+                    // Remove account
+                    accounts = accounts.filter(account => account.id !== id);
+                    
+                    // Remove associated passwords
+                    if (passwords[id]) {
+                        delete passwords[id];
+                        savePasswords();
+                    }
+                    
+                    // If deleted account was the current one, reset selection
+                    if (currentAccountId === id) {
+                        currentAccountId = null;
+                        selectedAccount.textContent = '';
+                        addPasswordSection.classList.add('hidden');
+                    }
+                    
+                    saveAccounts();
+                    renderAccounts();
+                    renderPasswords();
+                    
+                    showToast('Account deleted successfully', 'success');
+                }
+            }
+            
+            function handlePasswordSubmit(e) {
+                e.preventDefault();
+                
+                const siteName = siteNameInput.value.trim();
+                const siteUrl = siteUrlInput.value.trim();
+                const password = sitePasswordInput.value;
+                
+                if (!siteName) {
+                    showToast('Please enter a site name', 'error');
+                    return;
+                }
+                
+                if (!currentAccountId) {
+                    showToast('No account selected', 'error');
+                    return;
+                }
+                
+                // Initialize account's password array if it doesn't exist
+                if (!passwords[currentAccountId]) {
+                    passwords[currentAccountId] = [];
+                }
+                
+                // Create new password entry
+                const newPassword = {
+                    id: Date.now().toString(),
+                    siteName: siteName,
+                    siteUrl: siteUrl,
+                    password: password,
+                    createdAt: new Date().toISOString()
+                };
+                
+                passwords[currentAccountId].push(newPassword);
+                savePasswords();
+                
+                // Reset form
+                passwordForm.reset();
+                
+                // Show success message
+                showToast('Password saved successfully', 'success');
+                
+                // Render updated passwords
+                renderPasswords();
+            }
+            
+            function renderPasswords() {
+                if (!currentAccountId || !passwords[currentAccountId] || passwords[currentAccountId].length === 0) {
+                    noPasswordsMessage.classList.remove('hidden');
+                    passwordsList.innerHTML = '';
+                    passwordsList.appendChild(noPasswordsMessage);
+                    return;
+                }
+                
+                noPasswordsMessage.classList.add('hidden');
+                passwordsList.innerHTML = '';
+                
+                passwords[currentAccountId].forEach(password => {
+                    const passwordElement = document.createElement('div');
+                    passwordElement.className = 'bg-gray-50 rounded-lg p-4 group hover:bg-gray-100 transition duration-200';
+                    passwordElement.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-medium text-gray-800">${password.siteName}</h3>
+                            <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition duration-200">
+                                <button class="text-gray-400 hover:text-indigo-600 p-1" data-id="${password.id}" data-action="copy">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="text-gray-400 hover:text-red-500 p-1" data-id="${password.id}" data-action="delete">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 text-sm">
+                            ${password.siteUrl ? `<div class="flex items-center text-indigo-600">
+                                <i class="fas fa-globe mr-1"></i>
+                                <a href="${password.siteUrl.startsWith('http') ? password.siteUrl : 'https://' + password.siteUrl}" target="_blank" class="hover:underline">${password.siteUrl.length > 30 ? password.siteUrl.substring(0, 30) + '...' : password.siteUrl}</a>
+                            </div>` : ''}
+                            <div class="flex items-center relative bg-white rounded px-2 py-1">
+                                <input type="password" value="${password.password}" readonly class="bg-transparent w-32 outline-none password-display">
+                                <button class="text-gray-400 hover:text-indigo-600 ml-2">
+                                    <i class="far fa-eye-slash toggle-password"></i>
+                                </button>
+                            </div>
+                            <div class="text-xs text-gray-400">
+                                Saved on ${new Date(password.createdAt).toLocaleDateString()}
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add event listeners for buttons
+                    const copyBtn = passwordElement.querySelector('[data-action="copy"]');
+                    const deleteBtn = passwordElement.querySelector('[data-action="delete"]');
+                    const togglePasswordBtn = passwordElement.querySelector('.toggle-password');
+                    const passwordDisplay = passwordElement.querySelector('.password-display');
+                    
+                    copyBtn.addEventListener('click', function() {
+                        let actualPassword = password.password;
+                        if (masterPasswordEnabled) {
+                            actualPassword = simpleDecrypt(actualPassword);
+                        }
+                        
+                        navigator.clipboard.writeText(actualPassword).then(function() {
+                            const originalIcon = copyBtn.innerHTML;
+                            copyBtn.innerHTML = '<i class="fas fa-check text-green-500"></i>';
+                            
+                            // Auto-clear clipboard after 30 seconds
+                            setTimeout(() => {
+                                navigator.clipboard.writeText('').catch(() => {});
+                            }, 30000);
+                            
+                            setTimeout(function() {
+                                copyBtn.innerHTML = originalIcon;
+                            }, 2000);
+                            
+                            showToast('Password copied to clipboard (will clear in 30 seconds)', 'success');
+                        });
+                    });
+                    
+                    deleteBtn.addEventListener('click', function() {
+                        if (confirm('Are you sure you want to delete this password?')) {
+                            passwords[currentAccountId] = passwords[currentAccountId].filter(p => p.id !== password.id);
+                            savePasswords();
+                            renderPasswords();
+                            showToast('Password deleted successfully', 'success');
+                        }
+                    });
+                    
+                    togglePasswordBtn.addEventListener('click', function() {
+                        const type = passwordDisplay.getAttribute('type') === 'password' ? 'text' : 'password';
+                        passwordDisplay.setAttribute('type', type);
+                        const icon = passwordDisplay.getAttribute('type') === 'password' ? '<i class="far fa-eye-slash"></i>' : '<i class="far fa-eye"></i>';
+                        togglePasswordBtn.innerHTML = icon;
+                    });
+                    
+                    passwordsList.appendChild(passwordElement);
+                });
+            }
+            
+            function generateRandomPassword() {
+                const length = parseInt(passwordLength.value);
+                const chars = [];
+                
+                if (uppercase.checked) {
+                    chars.push(...'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+                }
+                
+                if (lowercase.checked) {
+                    chars.push(...'abcdefghijklmnopqrstuvwxyz');
+                }
+                
+                if (numbers.checked) {
+                    chars.push(...'0123456789');
+                }
+                
+                if (symbols.checked) {
+                    chars.push(...'!@#$%^&*()_+-=[]{}|;:,.<>?');
+                }
+                
+                if (chars.length === 0) {
+                    generatedPassword.value = '';
+                    showToast('Please select at least one character type', 'error');
+                    return;
+                }
+                
+                let password = '';
+                for (let i = 0; i < length; i++) {
+                    password += chars[Math.floor(Math.random() * chars.length)];
+                }
+                
+                generatedPassword.value = password;
+                
+                // Make the password visible when generated
+                generatedPassword.type = 'text';
+                
+                // Update strength indicator
+                updatePasswordStrength(password);
+            }
+            
+            function showToast(message, type) {
+                // Remove existing toasts if any
+                const existingToast = document.querySelector('.custom-toast');
+                if (existingToast) {
+                    existingToast.remove();
+                }
+                
+                // Create toast element
+                const toast = document.createElement('div');
+                toast.className = `custom-toast fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg text-white font-medium flex items-center ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`;
+                toast.innerHTML = `
+                    <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-2"></i>
+                    ${message}
+                `;
+                
+                document.body.appendChild(toast);
+                
+                // Auto remove after 3 seconds
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transition = 'opacity 0.5s ease';
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 500);
+                }, 3000);
+            }
+            
+            // Animate lock icon on load
+            const lockIcon = document.querySelector('.fa-lock');
+            lockIcon.classList.add('shake');
+            setTimeout(() => {
+                lockIcon.classList.remove('shake');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
